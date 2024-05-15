@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1086056400719",
+    "project_id": "ota-update-79f91",
+    "storage_bucket": "ota-update-79f91.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1086056400719:android:de3bf249c7f1e33875273a",
+        "android_client_info": {
+          "package_name": "com.otaupdate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEkUpXBi6WXNe596pQyzQO2I-Bjr0yK_M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
