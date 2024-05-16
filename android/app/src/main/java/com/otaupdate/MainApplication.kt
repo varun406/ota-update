@@ -84,7 +84,7 @@ class MainApplication : Application(), ReactApplication {
         val reactContext = ReactApplicationContext(this@MainApplication)
         val calendarModule = CalendarModule(reactContext)
 
-        val activeBundle : String = calendarModule.getBundlePath()  ?: "assets://index.android.bundle";
+        val activeBundle : String = calendarModule.getStoredPreference(Constants.BUNDLE_PATH_KEY)  ?: "assets://index.android.bundle";
         Log.d("Main Application", "activeBundle Varun : $activeBundle")
         return activeBundle;
     }

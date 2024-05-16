@@ -27,11 +27,6 @@ class CalendarModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
         FirebaseRemoteConfig.getInstance()
     }
 
-    private val BUNDLE_PREFS = "BundlePrefs"
-    private val BUNDLE_PATH_KEY = "bundlePath"
-
-    private val DEFAULT_FILE_NAME = "index.android.bundle"
-
     override fun getName() = "CalendarModule"
 
     companion object {
@@ -43,7 +38,8 @@ class CalendarModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
         val directory = reactApplicationContext.getExternalFilesDir(null)
 
         val filePath = "${directory?.absolutePath}/OTAUpdate/versions"
-        println("Varun directory $filePath")
+
+        val downloadDirectory = "/OTAUpdate/versions/${bundleVersion}/bundle"
 
 //        NOTE: CREATING VERSION DIRECTORY
         val versionDirectory = File(filePath,bundleVersion)
@@ -78,30 +74,75 @@ class CalendarModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
         // Create a DownloadManager.Request with the file URI
         val request = DownloadManager.Request(Uri.parse(url))
                 .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
-                .setTitle(DEFAULT_FILE_NAME)
+                .setTitle(bundleVersion)
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setAllowedOverMetered(true)
                 .setAllowedOverRoaming(true)
-                .setDestinationInExternalFilesDir(reactApplicationContext, "/OTAUpdate/versions/${bundleVersion}/bundle", DEFAULT_FILE_NAME)
+                .setDestinationInExternalFilesDir(reactApplicationContext,downloadDirectory , Constants.DEFAULT_FILE_NAME)
 
         // Enqueue the download and get the download ID
         val downloadID = downloadManager.enqueue(request)
 
     }
 
+    //    @ReactMethod
+    fun addPreference(key: String, value: String) {
+        Log.d("CalendarModule", "Varun addPreference key: $key path: $value")
+        val sharedPreferences = reactApplicationContext.getSharedPreferences(Constants.BUNDLE_PREFS, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString(key, value)
+        editor.apply()
+    }
+
+
 
     // Fetch Remote Config values
-     fun fetchRemoteConfigValues() {
+    fun fetchRemoteConfigValues() {
         firebaseRemoteConfig.fetchAndActivate()
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         // NOTE: FETCHING ACTIVE BUNDLE VERSION
-                        val ACTIVE_BUNDLE_VERSION = firebaseRemoteConfig.getString("active_bundle_name")
-                        Log.d("CalendarModule", "Varun Remote Config Value: $ACTIVE_BUNDLE_VERSION")
-                        if (ACTIVE_BUNDLE_VERSION != "") {
-                            val ACTIVE_BUNDLE = firebaseRemoteConfig.getString(ACTIVE_BUNDLE_VERSION)
-                            Log.d("CalendarModule", "Varun Remote BUNDLE Value: $ACTIVE_BUNDLE")
-                            downloadFile( ACTIVE_BUNDLE_VERSION, ACTIVE_BUNDLE)
+                        val activeBundleVersion = firebaseRemoteConfig.getString(Constants.FIREBASE_ACTIVE_BUNDLE_NAME)
+                        Log.d("CalendarModule", "Varun Remote Config Value: $activeBundleVersion")
+                        if (activeBundleVersion != "") {
+                            val activeBundle = firebaseRemoteConfig.getString(activeBundleVersion)
+
+//                            NOTE: ADDING ACTIVE BUNDLE VERSION
+                            addPreference(Constants.ACTIVE_BUNDLE_VERSION,activeBundleVersion)
+
+                            Log.d("CalendarModule", "Varun Remote BUNDLE Value: $activeBundle")
+
+                            val directory = reactApplicationContext.getExternalFilesDir(null)
+                            if (directory != null) {
+
+
+                                // Check if OTAUpdate folder exists
+                                val otaUpdateDirectory = File(directory, "OTAUpdate")
+                                if (otaUpdateDirectory.exists()) {
+                                    // OTAUpdate folder exists, check if versions folder exists
+                                    val versionsDirectory = File(otaUpdateDirectory, "versions")
+                                    if (versionsDirectory.exists()) {
+                                        // Versions folder exists, construct the file path
+                                        val activeVersionDirectory = getStoredPreference(Constants.ACTIVE_BUNDLE_VERSION)
+                                        println("activeVersionDirectory ${activeVersionDirectory}")
+                                        val versionNumberDirectory = File(versionsDirectory, activeBundleVersion)
+
+                                        if(!versionNumberDirectory.exists()){
+                                            downloadFile( activeBundleVersion, activeBundle)
+                                        }
+
+                                    } else {
+                                        Log.e("CalendarModule", "Versions folder does not exist")
+                                    }
+                                } else {
+                                    Log.e("CalendarModule", "OTAUpdate folder does not exist")
+                                }
+
+                            } else {
+                                Log.e("CalendarModule", "Directory does not exist")
+                            }
+
+
                         }
                     } else {
                         Log.e("CalendarModule", "Varun Fetch failed")
@@ -110,20 +151,10 @@ class CalendarModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
 
     }
 
-
-//    @ReactMethod
-    fun saveBundlePath(path: String) {
-        val sharedPreferences = reactApplicationContext.getSharedPreferences(BUNDLE_PREFS, Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        editor.putString(BUNDLE_PATH_KEY, path)
-        editor.apply()
-    }
-
-
     init {
         // Set up Firebase Remote Config settings
         val configSettings = FirebaseRemoteConfigSettings.Builder()
-                .setMinimumFetchIntervalInSeconds(3600) // 1 min
+                .setMinimumFetchIntervalInSeconds(5) // 5 sec
                 .build()
         firebaseRemoteConfig.setConfigSettingsAsync(configSettings)
 
@@ -138,59 +169,59 @@ class CalendarModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     }
 
 
-//    @ReactMethod
+    //    @ReactMethod
     fun getFileLocation() {
         val directory = reactApplicationContext.getExternalFilesDir(null)
-    if (directory != null) {
+        if (directory != null) {
 
 
-        // Check if OTAUpdate folder exists
-        val otaUpdateDirectory = File(directory, "OTAUpdate")
-        if (otaUpdateDirectory.exists()) {
-            // OTAUpdate folder exists, check if versions folder exists
-            val versionsDirectory = File(otaUpdateDirectory, "versions")
-            if (versionsDirectory.exists()) {
-                // Versions folder exists, construct the file path
-                val bundleDirectory = File(versionsDirectory, "bundle")
-                if (bundleDirectory.exists()) {
-                    // Bundle folder exists, construct the file path
-                    val file = File(bundleDirectory, "index.android.bundle")
-                    if (file.exists()) {
-                        // File exists, return its absolute path
-                        println("Varun check upto bundle path ${file.absolutePath}")
-                    } else {
-                        Log.e("CalendarModule", "File not found: ${file.absolutePath}")
+            // Check if OTAUpdate folder exists
+            val otaUpdateDirectory = File(directory, "OTAUpdate")
+            if (otaUpdateDirectory.exists()) {
+                // OTAUpdate folder exists, check if versions folder exists
+                val versionsDirectory = File(otaUpdateDirectory, "versions")
+                if (versionsDirectory.exists()) {
+                    // Versions folder exists, construct the file path
+                    val activeVersionDirectory = getStoredPreference(Constants.ACTIVE_BUNDLE_VERSION)
+                    println("activeVersionDirectory ${activeVersionDirectory}")
+                    val versionNumberDirectory = File(versionsDirectory, activeVersionDirectory)
+
+                    if(versionNumberDirectory.exists()){
+                        val bundleDirectory = File(versionNumberDirectory, "bundle")
+                        if (bundleDirectory.exists()) {
+                            // Bundle folder exists, construct the file path
+                            val file = File(bundleDirectory, Constants.DEFAULT_FILE_NAME)
+                            if (file.exists()) {
+                                // File exists, return its absolute path
+                                addPreference(Constants.BUNDLE_PATH_KEY,file.absolutePath)
+                                println("Varun check upto bundle path ${file.absolutePath}")
+                            } else {
+                                Log.e("CalendarModule", "File not found: ${file.absolutePath}")
+                            }
+                        } else {
+                            Log.e("CalendarModule", "Bundle folder does not exist")
+                        }
                     }
+
                 } else {
-                    Log.e("CalendarModule", "Bundle folder does not exist")
+                    Log.e("CalendarModule", "Versions folder does not exist")
                 }
             } else {
-                Log.e("CalendarModule", "Versions folder does not exist")
+                Log.e("CalendarModule", "OTAUpdate folder does not exist")
             }
+
         } else {
-            Log.e("CalendarModule", "OTAUpdate folder does not exist")
+            Log.e("CalendarModule", "Directory does not exist")
         }
-
-
-
-        val file = File(directory, "index.android.bundle")
-        if (file.exists()) {
-            // File exists, return its absolute path
-            saveBundlePath(file.absolutePath)
-        } else {
-            Log.e("CalendarModule", "File not found: ${file.absolutePath}")
-        }
-    } else {
-        Log.e("CalendarModule", "Directory does not exist")
-    }
 
     }
 
     @ReactMethod
-    fun getBundlePath(): String? {
-        val sharedPreferences = reactApplicationContext.getSharedPreferences(BUNDLE_PREFS, Context.MODE_PRIVATE)
-        val currentBundle = sharedPreferences.getString(BUNDLE_PATH_KEY, "assets://index.android.bundle")
-        Log.d("CalendarModule", "Current bundle path: $currentBundle")
-        return currentBundle;
+    fun getStoredPreference(key: String): String? {
+        Log.d("CalendarModule", "Varun getStoredPreference key: $key ")
+        val sharedPreferences = reactApplicationContext.getSharedPreferences(Constants.BUNDLE_PREFS, Context.MODE_PRIVATE)
+        val preferenceValue = sharedPreferences.getString(key, Constants.DEFAULT_BUNDLE_PATH)
+        Log.d("CalendarModule", "Varun preferenceValue : $preferenceValue ")
+        return preferenceValue;
     }
 }

@@ -77,20 +77,6 @@ function App(): React.JSX.Element {
     getPermission();
   }, []);
 
-  const bundlePath = CalendarModule.getBundlePath();
-
-  const useBundle1 = () => {
-    CalendarModule.saveBundlePath('index.android1.bundle');
-  };
-
-  const useBundle2 = () => {
-    CalendarModule.saveBundlePath('index.android2.bundle');
-  };
-
-  const useBundle3 = () => {
-    CalendarModule.saveBundlePath('index.android3.bundle');
-  };
-
   const logEvent = async () => {
     await analytics().logSignUp({
       method: 'facebook',
@@ -100,18 +86,16 @@ function App(): React.JSX.Element {
   return (
     <>
       <View style={styles.container}>
-        <Text>{state ? state : 'No Path'}</Text>
         <View
           style={{
-            backgroundColor: 'teal',
+            backgroundColor: 'orange',
             flexDirection: 'column',
             gap: 40,
             padding: 20,
           }}>
-          <Text style={{fontWeight: '800', color: 'red'}}>
-            This is from React Native bundle 3
+          <Text style={{fontWeight: '800',fontSize: 45, color: 'lightgrey'}}>
+            This is from React Native bundle 7
           </Text>
-          <Button title="Analytic Log Event" onPress={logEvent} />
         </View>
       </View>
     </>
@@ -124,7 +108,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 20,
-    backgroundColor: 'red',
+    backgroundColor: 'skyblue',
   },
   image: {
     width: '100%',
